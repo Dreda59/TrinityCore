@@ -2659,6 +2659,23 @@ Battleground.RewardLoserHonorLast       = 3500
 
 Battleground.ReportAFK = 3
 
+#    Battleground.Rated.Bracket
+#        Description: The active bracket type for Rated Battleground matchmaking
+#        Range:       0-3
+#        Default:     1 - 10v10
+#                     0 - Disabled
+#                     2 - 15v15
+#                     3 - 25v25
+
+Battleground.Rated.Bracket = 1
+
+#
+#    Battleground.Rated.Bracket
+#        Description: The base amount of rewarded Conquest Points when winning an Rated Battleground match
+#        Default:     40000
+
+Battleground.Rated.Reward = 40000
+
 #
 ###################################################################################################
 

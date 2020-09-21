@@ -822,6 +822,7 @@ void WorldSession::HandleRequestRatedBgInfo(WorldPacket & recvData)
 
     WorldPackets::Battleground::BattlefieldRatedInfo packet;
     packet.Unk = unk;
+    packet.Reward = int32(sWorld->getIntConfig(CONFIG_BATTLEGROUND_RATED_REWARD) / CURRENCY_PRECISION); // Todo: calculate rating based amount once implemented
     packet.RewardWeeklyLimit = _player->GetCurrencyWeekCap(CURRENCY_TYPE_CONQUEST_META_RBG, true);
     packet.PurseQuantity = _player->GetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, true);
 
