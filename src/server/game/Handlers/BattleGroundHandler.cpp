@@ -20,6 +20,7 @@
 #include "ArenaTeamMgr.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
+#include "BattlegroundPackets.h"
 #include "Chat.h"
 #include "Common.h"
 #include "Creature.h"
@@ -819,46 +820,24 @@ void WorldSession::HandleRequestRatedBgInfo(WorldPacket & recvData)
 
     TC_LOG_DEBUG("bg.battleground", "WorldSession::HandleRequestRatedBgInfo: unk = %u", unk);
 
-    /// @Todo: perfome research in this case
-    /// The unk fields are related to arenas
-    WorldPacket data(SMSG_RATED_BG_STATS, 72);
-    data << uint32(0);      // BgWeeklyWins20vs20
-    data << uint32(0);      // BgWeeklyPlayed20vs20
-    data << uint32(0);      // BgWeeklyPlayed15vs15
-    data << uint32(0);
-    data << uint32(0);      // BgWeeklyWins10vs10
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);      // BgWeeklyWins15vs15
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);
-    data << uint32(0);      // BgWeeklyPlayed10vs10
-    data << uint32(0);
-    data << uint32(0);
+    WorldPackets::Battleground::BattlefieldRatedInfo packet;
+    packet.Unk = unk;
+    packet.RewardWeeklyLimit = _player->GetCurrencyWeekCap(CURRENCY_TYPE_CONQUEST_META_RBG, true);
+    packet.PurseQuantity = _player->GetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, true);
 
-    SendPacket(&data);
+    SendPacket(packet.Write());
 }
 
 void WorldSession::HandleRequestPvpOptions(WorldPacket& /*recvData*/)
 {
     TC_LOG_DEBUG("network", "WORLD: CMSG_REQUEST_PVP_OPTIONS_ENABLED");
 
-    /// @Todo: perfome research in this case
-    WorldPacket data(SMSG_PVP_OPTIONS_ENABLED, 1);
-    data.WriteBit(1);
-    data.WriteBit(1);       // WargamesEnabled
-    data.WriteBit(1);
-    data.WriteBit(1);       // RatedBGsEnabled
-    data.WriteBit(1);       // RatedArenasEnabled
+    WorldPackets::Battleground::PVPOptionsEnabled packet;
+    packet.RatedArenas = true;
+    packet.WargameBattlegrounds = true;
+    packet.RatedBattlegrounds = true;
 
-    data.FlushBits();
-
-    SendPacket(&data);
+    SendPacket(packet.Write());
 }
 
 void WorldSession::HandleRequestPvpReward(WorldPacket& /*recvData*/)
@@ -872,17 +851,8 @@ void WorldSession::HandleRequestRatedBgStats(WorldPacket& /*recvData*/)
 {
     TC_LOG_DEBUG("network", "WORLD: CMSG_REQUEST_RATED_BG_STATS");
 
-    WorldPacket data(SMSG_BATTLEFIELD_RATED_INFO, 29);
-    data << uint32(0);  // Reward
-    data << uint8(3);   // unk
-    data << uint32(0);  // unk
-    data << uint32(0);  // unk
-    data << _player->GetCurrencyWeekCap(CURRENCY_TYPE_CONQUEST_META_RBG, true);
-    data << uint32(0);  // unk
-    data << uint32(0);  // unk
-    data << _player->GetCurrency(CURRENCY_TYPE_CONQUEST_POINTS, true);
-
-    SendPacket(&data);
+    WorldPackets::Battleground::RatedBattlefieldInfo packet;
+    SendPacket(packet.Write());
 }
 
 void WorldSession::HandleBattlegroundStateQuery(WorldPacket& /*recvData*/)
