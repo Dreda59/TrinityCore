@@ -521,17 +521,16 @@ enum DamageEffectType : uint8
 
 enum UnitTypeMask
 {
-    UNIT_MASK_NONE                  = 0x00000000,
-    UNIT_MASK_SUMMON                = 0x00000001,
-    UNIT_MASK_MINION                = 0x00000002,
-    UNIT_MASK_GUARDIAN              = 0x00000004,
-    UNIT_MASK_TOTEM                 = 0x00000008,
-    UNIT_MASK_PET                   = 0x00000010,
-    UNIT_MASK_VEHICLE               = 0x00000020,
-    UNIT_MASK_PUPPET                = 0x00000040,
-    UNIT_MASK_HUNTER_PET            = 0x00000080,
-    UNIT_MASK_CONTROLABLE_GUARDIAN  = 0x00000100,
-    UNIT_MASK_ACCESSORY             = 0x00000200
+    UNIT_MASK_NONE          = 0x00000000,
+    UNIT_MASK_SUMMON        = 0x00000001, // Default unit mask type for tempoary summons
+    UNIT_MASK_MINION        = 0x00000002, // unit mask for tempoary summons with summon properties control Ally or Vehicle
+    UNIT_MASK_GUARDIAN      = 0x00000004, // unit mask for pets and tempoary summons with summon properties control Pet
+    UNIT_MASK_TOTEM         = 0x00000008, // unit mask for tempoary summons with summon properties Slot between TotemFire and TotemAir
+    UNIT_MASK_PET           = 0x00000010, // unit mask for pets
+    UNIT_MASK_VEHICLE       = 0x00000020,
+    UNIT_MASK_PUPPET        = 0x00000040,
+    UNIT_MASK_HUNTER_PET    = 0x00000080,
+    UNIT_MASK_ACCESSORY     = 0x00000100
 };
 
 struct DiminishingReturn
@@ -1042,7 +1041,6 @@ class TC_GAME_API Unit : public WorldObject
         bool IsHunterPet() const{ return (m_unitTypeMask & UNIT_MASK_HUNTER_PET) != 0; }
         bool IsTotem() const    { return (m_unitTypeMask & UNIT_MASK_TOTEM) != 0; }
         bool IsVehicle() const  { return (m_unitTypeMask & UNIT_MASK_VEHICLE) != 0; }
-        bool IsControlableGuardian() const  { return (m_unitTypeMask & UNIT_MASK_CONTROLABLE_GUARDIAN) != 0; }
 
         uint8 getLevel() const { return uint8(GetUInt32Value(UNIT_FIELD_LEVEL)); }
         uint8 getLevelForTarget(WorldObject const* /*target*/) const override { return getLevel(); }
@@ -1382,13 +1380,20 @@ class TC_GAME_API Unit : public WorldObject
         void SetOwnerGUID(ObjectGuid owner);
         ObjectGuid GetCreatorGUID() const { return GetGuidValue(UNIT_FIELD_CREATEDBY); }
         void SetCreatorGUID(ObjectGuid creator) { SetGuidValue(UNIT_FIELD_CREATEDBY, creator); }
-        ObjectGuid GetMinionGUID() const { return GetGuidValue(UNIT_FIELD_SUMMON); }
-        void SetMinionGUID(ObjectGuid guid) { SetGuidValue(UNIT_FIELD_SUMMON, guid); }
+
+        /* todo: finish refactoring */
+        ObjectGuid GetActiveGuardianGUID() const { return GetGuidValue(UNIT_FIELD_SUMMON); }
+        void SetActiveGuardianGUID(ObjectGuid guid) { SetGuidValue(UNIT_FIELD_SUMMON, guid); }
+
+        void SetPetSummonSlotGUID(ObjectGuid guid) { m_SummonSlot[AsUnderlyingType(SummonSlot::Pet)] = guid; }
+        ObjectGuid GetPetSummonSlotGUID() const { return m_SummonSlot[AsUnderlyingType(SummonSlot::Pet)]; }
+
+        Guardian* GetActiveGuardian() const;
+        void SetActiveGuardian(Guardian* guardian);
+
         ObjectGuid GetCharmerGUID() const { return GetGuidValue(UNIT_FIELD_CHARMEDBY); }
         void SetCharmerGUID(ObjectGuid owner) { SetGuidValue(UNIT_FIELD_CHARMEDBY, owner); }
         ObjectGuid GetCharmGUID() const { return  GetGuidValue(UNIT_FIELD_CHARM); }
-        void SetPetGUID(ObjectGuid guid) { m_SummonSlot[SUMMON_SLOT_PET] = guid; }
-        ObjectGuid GetPetGUID() const { return m_SummonSlot[SUMMON_SLOT_PET]; }
         void SetCritterGUID(ObjectGuid guid) { SetGuidValue(UNIT_FIELD_CRITTER, guid); }
         ObjectGuid GetCritterGUID() const { return GetGuidValue(UNIT_FIELD_CRITTER); }
         ObjectGuid GetOwnerOrCreatorGUID() const { return GetOwnerGUID() ? GetOwnerGUID() : GetCreatorGUID(); }
@@ -1401,14 +1406,19 @@ class TC_GAME_API Unit : public WorldObject
         Player* GetSpellModOwner() const;
 
         Unit* GetOwner() const;
-        Guardian* GetGuardianPet() const;
-        Minion* GetFirstMinion() const;
         Unit* GetCharmer() const;
         Unit* GetCharm() const;
         Unit* GetCharmerOrOwner() const;
         Unit* GetCharmerOrOwnerOrSelf() const;
         Player* GetCharmerOrOwnerPlayerOrPlayerItself() const;
         Player* GetAffectingPlayer() const;
+
+        std::set<Minion*> _ownedMinions;
+        void SetOwnerOfMinion(Minion* minion, bool apply);
+        std::set<Minion*> _createdMinions;
+        void SetCreatorOfMinion(Minion* minion, bool apply);
+        void DespawnAllCreatedMinions();
+
 
         void SetMinion(Minion *minion, bool apply);
         void GetAllMinionsByEntry(std::list<Creature*>& Minions, uint32 entry);
@@ -1418,6 +1428,7 @@ class TC_GAME_API Unit : public WorldObject
         bool SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* aurApp = nullptr);
         void RemoveCharmedBy(Unit* charmer);
         void RestoreFaction();
+
 
         ControlList m_Controlled;
         Unit* GetFirstControlled() const;
@@ -1623,7 +1634,7 @@ class TC_GAME_API Unit : public WorldObject
         SpellHistory* GetSpellHistory() { return m_spellHistory; }
         SpellHistory const* GetSpellHistory() const { return m_spellHistory; }
 
-        ObjectGuid m_SummonSlot[MAX_SUMMON_SLOT];
+        ObjectGuid m_SummonSlot[AsUnderlyingType(SummonSlot::Max)];
         ObjectGuid m_ObjectSlot[MAX_GAMEOBJECT_SLOT];
 
         ShapeshiftForm GetShapeshiftForm() const { return ShapeshiftForm(GetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_SHAPESHIFT_FORM)); }

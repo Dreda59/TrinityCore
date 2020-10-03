@@ -7408,12 +7408,12 @@ void Player::DuelComplete(DuelCompleteType type)
     // cleanup combo points
     if (GetComboTarget() == duel->opponent->GetGUID())
         ClearComboPoints();
-    else if (GetComboTarget() == duel->opponent->GetPetGUID())
+    else if (GetComboTarget() == duel->opponent->GetPetSummonSlotGUID())
         ClearComboPoints();
 
     if (duel->opponent->GetComboTarget() == GetGUID())
         duel->opponent->ClearComboPoints();
-    else if (duel->opponent->GetComboTarget() == GetPetGUID())
+    else if (duel->opponent->GetComboTarget() == GetPetSummonSlotGUID())
         duel->opponent->ClearComboPoints();
 
     //cleanups
@@ -20889,7 +20889,7 @@ void Player::UpdateDuelFlag(time_t currTime)
 
 Pet* Player::GetPet() const
 {
-    if (ObjectGuid pet_guid = GetPetGUID())
+    if (ObjectGuid pet_guid = GetPetSummonSlotGUID())
     {
         if (!pet_guid.IsPet())
             return nullptr;
@@ -23071,7 +23071,7 @@ inline void BeforeVisibilityDestroy(T* /*t*/, Player* /*p*/) { }
 template<>
 inline void BeforeVisibilityDestroy<Creature>(Creature* t, Player* p)
 {
-    if (p->GetPetGUID() == t->GetGUID() && t->IsPet())
+    if (p->GetPetSummonSlotGUID() == t->GetGUID() && t->IsPet())
         t->ToPet()->Remove(PET_SAVE_DISMISS, true);
 }
 
@@ -26275,7 +26275,7 @@ void Player::ResummonPetTemporaryUnSummonedIfAny()
     if (IsPetNeedBeTemporaryUnsummoned())
         return;
 
-    if (GetPetGUID())
+    if (GetPetSummonSlotGUID())
         return;
 
     Pet* NewPet = new Pet(this);
@@ -27769,8 +27769,8 @@ Pet* Player::SummonPet(uint32 entry, float x, float y, float z, float ang, PetTy
         pet->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
         pet->InitStatsForLevel(getLevel());
         pet->SetReactState(REACT_ASSIST);
-
-        SetMinion(pet, true);
+        pet->UnsummonActiveGuardian();
+        pet->SetActiveGuardian(pet);
 
         Transport* transport = GetTransGUID().IsEmpty() ? GetTransport() : nullptr;
         if (transport)

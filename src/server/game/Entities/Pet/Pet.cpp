@@ -17,6 +17,7 @@
 
 #include "Common.h"
 #include "DatabaseEnv.h"
+#include "Guardian.h"
 #include "Log.h"
 #include "WorldPacket.h"
 #include "ObjectMgr.h"
@@ -46,12 +47,6 @@ Pet::Pet(Player* owner, PetType type) :
     m_unitTypeMask |= UNIT_MASK_PET;
     if (type == HUNTER_PET)
         m_unitTypeMask |= UNIT_MASK_HUNTER_PET;
-
-    if (!(m_unitTypeMask & UNIT_MASK_CONTROLABLE_GUARDIAN))
-    {
-        m_unitTypeMask |= UNIT_MASK_CONTROLABLE_GUARDIAN;
-        InitCharmInfo();
-    }
 
     m_name = "Pet";
 }
@@ -102,21 +97,13 @@ bool Pet::LoadPetData(Player* owner, uint32 petEntry, uint32 petnumber, bool cur
     PlayerPetData* playerPetData;
 
     if (petnumber)
-    {
         playerPetData = owner->GetPlayerPetDataById(petnumber);
-    }
     else if ((getPetType() == SUMMON_PET) && petEntry)
-    {
         playerPetData = owner->GetPlayerPetDataByCreatureId(petEntry);
-    }
     else if (getPetType() == HUNTER_PET)
-    {
         playerPetData = owner->GetPlayerPetDataBySlot(petEntry);
-    }
     else
-    {
         playerPetData = owner->GetPlayerPetDataCurrent();
-    }
 
     if (!playerPetData)
     {
@@ -229,6 +216,8 @@ bool Pet::LoadPetData(Player* owner, uint32 petEntry, uint32 petnumber, bool cur
 
     SetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP, uint32(GameTime::GetGameTime())); // cast can't be helped here
     SetCreatorGUID(owner->GetGUID());
+    UnsummonActiveGuardian();
+    owner->SetActiveGuardian(this);
 
     InitStatsForLevel(petlevel);
     SetUInt32Value(UNIT_FIELD_PETEXPERIENCE, playerPetData->PetExp);
@@ -293,7 +282,7 @@ bool Pet::LoadPetData(Player* owner, uint32 petEntry, uint32 petnumber, bool cur
         transport->AddPassenger(this);
     }
 
-    owner->SetMinion(this, true);
+    SetOwnerGUID(owner->GetGUID());
     map->AddToMap(ToCreature());
 
     InitTalentForLevel();                                   // set original talents points before spell loading
@@ -565,7 +554,7 @@ void Pet::Update(uint32 diff)
         {
             // unsummon pet that lost owner
             Player* owner = GetOwner();
-            if ((!IsWithinDistInMap(owner, GetMap()->GetVisibilityRange()) && !isPossessed()) || (isControlled() && !owner->GetPetGUID()))
+            if ((!IsWithinDistInMap(owner, GetMap()->GetVisibilityRange()) && !isPossessed()) || (isControlled() && !owner->GetPetSummonSlotGUID()))
             //if (!owner || (!IsWithinDistInMap(owner, GetMap()->GetVisibilityDistance()) && (owner->GetCharmGUID() && (owner->GetCharmGUID() != GetGUID()))) || (isControlled() && !owner->GetPetGUID()))
             {
                 Remove(PET_SAVE_DISMISS, true);
@@ -574,7 +563,7 @@ void Pet::Update(uint32 diff)
 
             if (isControlled())
             {
-                if (owner->GetPetGUID() != GetGUID())
+                if (owner->GetPetSummonSlotGUID() != GetGUID())
                 {
                     TC_LOG_ERROR("entities.pet", "Pet %u is not pet of owner %s, removed", GetEntry(), GetOwner()->GetName().c_str());
                     Remove(IsHunterPet() ? PET_SAVE_AS_DELETED : PET_SAVE_DISMISS);

@@ -83,7 +83,7 @@ public:
             return false;
         }
 
-        if (player->GetPetGUID())
+        if (player->GetPetSummonSlotGUID())
         {
             handler->PSendSysMessage("You already have a pet");
             handler->SetSentErrorMessage(true);

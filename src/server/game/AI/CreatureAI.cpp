@@ -29,7 +29,7 @@
 #include "Player.h"
 #include "SpellMgr.h"
 #include "SpellHistory.h"
-#include "TemporarySummon.h"
+#include "TempSummon.h"
 #include "Vehicle.h"
 #include "World.h"
 
@@ -152,31 +152,14 @@ static bool ShouldFollowOnSpawn(SummonPropertiesEntry const* properties)
     if (!properties)
         return false;
 
-    switch (properties->Control)
+    switch (SummonControl(properties->Control))
     {
-        case SUMMON_CATEGORY_PET:
+        case SummonControl::Pet:
             return true;
-        case SUMMON_CATEGORY_WILD:
-        case SUMMON_CATEGORY_ALLY:
-        case SUMMON_CATEGORY_UNK:
-            if (properties->Flags & 512)
-                return true;
-
-            // Guides. They have their own movement
+        case SummonControl::Ally:
             if (properties->Flags & SUMMON_PROP_FLAG_UNK14)
                 return false;
-
-            switch (SummonTitle(properties->Title))
-            {
-                case SummonTitle::Pet:
-                case SummonTitle::Guardian:
-                case SummonTitle::Runeblade:
-                case SummonTitle::Minion:
-                case SummonTitle::Companion:
-                    return true;
-                default:
-                    return false;
-            }
+            return true;
         default:
             return false;
     }

@@ -29,7 +29,7 @@
 #include "SpellHistory.h"
 #include "SpellMgr.h"
 #include "Spell.h"
-#include "TemporarySummon.h"
+#include "TempSummon.h"
 
 enum PaladinSpells
 {
